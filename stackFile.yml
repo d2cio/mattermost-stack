@@ -1,0 +1,55 @@
+version: '1.0'
+services:
+  - name: db
+    type: postgres
+    version: 11.0
+    configuration: StandAlone
+    ports:
+      - 5432
+    username: mattermost
+    database: mattermost
+    userPassword: null
+    remoteAccess: false
+    deployTo:
+      - mattermost
+
+  - name: mattermost
+    type: docker
+    image: mattermost/mattermost-prod-app
+    version: latest
+    globalDeps: apk add bash
+    ports:
+      - 8000
+    remoteAccess: false
+    env:
+      DB_HOST: "{{=service('db').getMasterAlias()}}"
+      MM_DBNAME: "{{=service('db').get('database')}}"
+      MM_USERNAME: "{{=service('db').get('username')}}"
+      MM_PASSWORD: "{{=service('db').get('userPassword')}}"
+    volumes:
+      - directory: /mattermost/client/plugins
+      - directory: /mattermost/config
+      - directory: /mattermost/data
+      - directory: /mattermost/logs
+      - directory: /mattermost/plugins
+    volumesUID: 2000
+    deployTo:
+      - mattermost
+
+  - name: web
+    type: nginx
+    version: 1.15
+    ports:
+      - 80
+      - 443
+    remoteAccess: true
+    serviceFiles:
+      - name: mattermost
+    deployTo:
+      - mattermost
+
+hosts:
+  - name: mattermost
+    requirements:
+      cores: 1
+      memory: 1
